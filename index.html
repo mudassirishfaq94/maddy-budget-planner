@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Manager - Track Your Finances</title>
+    <meta name="description"
+        content="A powerful budget management app to track income, expenses, and manage your finances efficiently.">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Authentication Screen -->
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h1 class="auth-title">💰 Maddy Budget</h1>
+                    <p class="auth-subtitle">Take control of your finances</p>
+                </div>
+
+                <!-- Login Form -->
+                <div id="login-form" class="auth-form">
+                    <h2 class="form-title">Welcome Back</h2>
+                    <form id="login-form-element">
+                        <div class="form-group">
+                            <label for="login-email">Email</label>
+                            <input type="email" id="login-email" placeholder="your@email.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Password</label>
+                            <input type="password" id="login-password" placeholder="••••••••" required>
+                        </div>
+                        <div id="login-error" class="error-message"></div>
+                        <button type="submit" class="btn btn-primary">Sign In</button>
+                    </form>
+                    <p class="form-switch">
+                        Don't have an account?
+                        <a href="#" id="show-signup">Sign up</a>
+                    </p>
+                </div>
+
+                <!-- Signup Form -->
+                <div id="signup-form" class="auth-form hidden">
+                    <h2 class="form-title">Create Account</h2>
+                    <form id="signup-form-element">
+                        <div class="form-group">
+                            <label for="signup-name">Full Name</label>
+                            <input type="text" id="signup-name" placeholder="John Doe" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-email">Email</label>
+                            <input type="email" id="signup-email" placeholder="your@email.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-password">Password</label>
+                            <input type="password" id="signup-password" placeholder="••••••••" required>
+                            <div class="password-strength">
+                                <div id="password-strength-bar" class="strength-bar"></div>
+                            </div>
+                            <p class="password-hint">At least 6 characters</p>
+                        </div>
+                        <div id="signup-error" class="error-message"></div>
+                        <button type="submit" class="btn btn-primary">Create Account</button>
+                    </form>
+                    <p class="form-switch">
+                        Already have an account?
+                        <a href="#" id="show-login">Sign in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen" class="dashboard-screen hidden">
+        <!-- Mobile Header -->
+        <header class="mobile-header">
+            <button id="hamburger-btn" class="hamburger-btn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <h1 class="mobile-logo">💰 Maddy Budget</h1>
+            <div class="mobile-user-avatar" id="mobile-user-avatar">U</div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1 class="sidebar-title text-white">💰 Maddy Budget</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="overview">
+                    <span class="nav-icon">📊</span>
+                    <span>Overview</span>
+                </a>
+                <a href="#" class="nav-item" data-section="transactions">
+                    <span class="nav-icon">💳</span>
+                    <span>Transactions</span>
+                </a>
+                <a href="#" class="nav-item" data-section="categories">
+                    <span class="nav-icon">🏷️</span>
+                    <span>Categories</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <span id="user-avatar-text">U</span>
+                    </div>
+                    <div class="user-details">
+                        <p class="user-name" id="user-name">User</p>
+                        <p class="user-email" id="user-email">user@email.com</p>
+                    </div>
+                </div>
+                <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Overview Section -->
+            <section id="overview-section" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-title">Financial Overview</h2>
+                    <div class="header-actions">
+                        <button id="add-transaction-btn" class="btn btn-primary">
+                            <span>+ Add Transaction</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="summary-grid">
+                    <div class="summary-card income-card">
+                        <div class="card-icon">📈</div>
+                        <div class="card-content">
+                            <p class="card-label">Total Income</p>
+                            <h3 class="card-value" id="total-income">د.إ 0.00</h3>
+                        </div>
+                    </div>
+                    <div class="summary-card expense-card">
+                        <div class="card-icon">📉</div>
+                        <div class="card-content">
+                            <p class="card-label">Total Expenses</p>
+                            <h3 class="card-value" id="total-expenses">د.إ 0.00</h3>
+                        </div>
+                    </div>
+                    <div class="summary-card balance-card">
+                        <div class="card-icon">💰</div>
+                        <div class="card-content">
+                            <p class="card-label">Balance</p>
+                            <h3 class="card-value" id="balance">د.إ 0.00</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="transactions-container">
+                    <h3 class="subsection-title">Recent Transactions</h3>
+                    <div class="filter-bar">
+                        <div class="filter-group">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="income">Income</button>
+                            <button class="filter-btn" data-filter="expense">Expenses</button>
+                        </div>
+                        <input type="text" id="search-transactions" class="search-input"
+                            placeholder="Search transactions...">
+                    </div>
+                    <div id="transactions-list" class="transactions-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">📝</div>
+                            <p>No transactions yet</p>
+                            <p class="empty-subtitle">Start by adding your first transaction</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transactions Section -->
+            <section id="transactions-section" class="content-section hidden">
+                <div class="section-header">
+                    <h2 class="section-title">All Transactions</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-primary"
+                            onclick="document.getElementById('add-transaction-btn').click()">
+                            <span>+ Add Transaction</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="income">Income</button>
+                        <button class="filter-btn" data-filter="expense">Expenses</button>
+                    </div>
+                    <input type="text" class="search-input" placeholder="Search transactions...">
+                </div>
+
+                <div id="all-transactions-list" class="transactions-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">📝</div>
+                        <p>No transactions yet</p>
+                        <p class="empty-subtitle">Start by adding your first transaction</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Categories Section -->
+            <section id="categories-section" class="content-section hidden">
+                <div class="section-header">
+                    <h2 class="section-title">Manage Categories</h2>
+                </div>
+
+                <div class="categories-grid">
+                    <div class="category-group">
+                        <h3 class="category-group-title">Income Sources</h3>
+                        <div id="income-categories-list" class="categories-list"></div>
+                        <button id="add-income-category-btn" class="btn btn-secondary btn-sm">+ Add Custom
+                            Source</button>
+                    </div>
+                    <div class="category-group">
+                        <h3 class="category-group-title">Expense Categories</h3>
+                        <div id="expense-categories-list" class="categories-list"></div>
+                        <button id="add-expense-category-btn" class="btn btn-secondary btn-sm">+ Add Custom
+                            Category</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Add/Edit Transaction Modal -->
+    <div id="transaction-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="transaction-modal-title">Add Transaction</h3>
+                <button class="modal-close" id="close-transaction-modal">&times;</button>
+            </div>
+            <form id="transaction-form">
+                <input type="hidden" id="transaction-id">
+
+                <div class="form-group">
+                    <label>Type</label>
+                    <div class="type-toggle">
+                        <button type="button" class="type-btn active" data-type="income">
+                            <span>📈</span> Income
+                        </button>
+                        <button type="button" class="type-btn" data-type="expense">
+                            <span>📉</span> Expense
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="transaction-category">Category</label>
+                    <select id="transaction-category" required>
+                        <option value="">Select category</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="transaction-amount">Amount</label>
+                    <div class="input-with-prefix">
+                        <span class="input-prefix">د.إ</span>
+                        <input type="number" id="transaction-amount" step="0.01" min="0" placeholder="0.00" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="transaction-description">Description</label>
+                    <input type="text" id="transaction-description" placeholder="Enter description" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="transaction-date">Date</label>
+                    <input type="date" id="transaction-date" required>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-transaction">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="save-transaction">Save Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Category Modal -->
+    <div id="category-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3 class="modal-title" id="category-modal-title">Add Custom Category</h3>
+                <button class="modal-close" id="close-category-modal">&times;</button>
+            </div>
+            <form id="category-form">
+                <input type="hidden" id="category-type">
+
+                <div class="form-group">
+                    <label for="category-name">Category Name</label>
+                    <input type="text" id="category-name" placeholder="Enter category name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="category-icon">Icon (Emoji)</label>
+                    <input type="text" id="category-icon" placeholder="🏷️" maxlength="2" required>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-category">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Delete</h3>
+                <button class="modal-close" id="close-delete-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="delete-message">Are you sure you want to delete this item?</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="cancel-delete">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div id="onboarding-modal" class="onboarding-modal hidden">
+        <div class="onboarding-content">
+            <div class="onboarding-header">
+                <div class="onboarding-icon">💰</div>
+                <h2 class="onboarding-title">Welcome to Maddy Budget!</h2>
+                <p class="onboarding-subtitle">Let's get you started with managing your finances</p>
+            </div>
+
+            <div class="onboarding-features">
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-content">
+                        <h4>Track Your Finances</h4>
+                        <p>Monitor your income and expenses in real-time with beautiful visualizations</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🏷️</div>
+                    <div class="feature-content">
+                        <h4>Custom Categories</h4>
+                        <p>Create personalized categories for your income sources and expenses</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🔍</div>
+                    <div class="feature-content">
+                        <h4>Search & Filter</h4>
+                        <p>Easily find transactions with powerful search and filtering options</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">☁️</div>
+                    <div class="feature-content">
+                        <h4>Cloud Sync</h4>
+                        <p>Your data is securely stored and synced across all your devices</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">⌨️</div>
+                    <div class="feature-content">
+                        <h4>Keyboard Shortcuts</h4>
+                        <p>Press <span class="kbd">Alt</span> + <span class="kbd">N</span> to quickly add transactions
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="onboarding-actions">
+                <button class="btn btn-primary" id="start-tour-btn">Get Started</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Hint -->
+    <div id="shortcuts-hint" class="shortcuts-hint hidden">
+        <span>💡 Tip:</span>
+        <span class="kbd">Alt</span> + <span class="kbd">N</span>
+        <span>to add transaction</span>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+    <script src="firebase-db.js"></script>
+
+    <!-- JavaScript Files -->
+    <script src="storage.js"></script>
+    <script src="categories.js"></script>
+    <script src="transactions.js"></script>
+    <script src="ui-enhancements.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

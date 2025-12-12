@@ -115,6 +115,10 @@
                     <span class="nav-icon">🏷️</span>
                     <span>Categories</span>
                 </a>
+                <a href="#" class="nav-item" data-section="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Settings</span>
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-info">
@@ -202,6 +206,57 @@
                     </div>
                 </div>
 
+                <!-- Advanced Filter Controls -->
+                <div class="advanced-filters">
+                    <!-- Date Range Filter -->
+                    <div class="date-filter-section">
+                        <label class="filter-label">📅 Date Range:</label>
+                        <div class="date-quick-filters">
+                            <button class="date-filter-btn active" data-range="all">All Time</button>
+                            <button class="date-filter-btn" data-range="today">Today</button>
+                            <button class="date-filter-btn" data-range="week">This Week</button>
+                            <button class="date-filter-btn" data-range="month">This Month</button>
+                            <button class="date-filter-btn" data-range="year">This Year</button>
+                            <button class="date-filter-btn" data-range="custom">Custom</button>
+                        </div>
+                        <div class="custom-date-range hidden" id="custom-date-range">
+                            <input type="date" id="start-date" class="date-input">
+                            <span>to</span>
+                            <input type="date" id="end-date" class="date-input">
+                            <button class="btn btn-sm btn-primary" id="apply-date-range">Apply</button>
+                        </div>
+                    </div>
+
+                    <!-- Sort and Bulk Actions Row -->
+                    <div class="controls-row">
+                        <!-- Sort Options -->
+                        <div class="sort-section">
+                            <label class="filter-label">🔄 Sort By:</label>
+                            <select id="sort-field" class="sort-select">
+                                <option value="date">Date</option>
+                                <option value="amount">Amount</option>
+                                <option value="category">Category</option>
+                                <option value="description">Description</option>
+                            </select>
+                            <button class="sort-direction-btn" id="sort-direction" data-direction="desc"
+                                title="Sort Direction">
+                                <span class="sort-icon">↓</span>
+                            </button>
+                        </div>
+
+                        <!-- Bulk Actions -->
+                        <div class="bulk-actions-section">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="select-all-transactions" class="bulk-checkbox">
+                                <span>Select All</span>
+                            </label>
+                            <button class="btn btn-sm btn-danger hidden" id="bulk-delete-btn">
+                                🗑️ Delete Selected (<span id="selection-count">0</span>)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="filter-bar">
                     <div class="filter-group">
                         <button class="filter-btn active" data-filter="all">All</button>
@@ -238,6 +293,64 @@
                         <div id="expense-categories-list" class="categories-list"></div>
                         <button id="add-expense-category-btn" class="btn btn-secondary btn-sm">+ Add Custom
                             Category</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="content-section hidden">
+                <div class="section-header">
+                    <h2 class="section-title">Settings</h2>
+                </div>
+
+                <div class="settings-grid">
+                    <!-- Profile Settings -->
+                    <div class="settings-card">
+                        <h3 class="settings-card-title">👤 Profile Information</h3>
+                        <form id="profile-form">
+                            <div class="form-group">
+                                <label for="profile-name">Full Name</label>
+                                <input type="text" id="profile-name" placeholder="Your name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-email">Email</label>
+                                <input type="email" id="profile-email" disabled>
+                                <p class="form-hint">Email cannot be changed</p>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </form>
+                    </div>
+
+                    <!-- Password Settings -->
+                    <div class="settings-card">
+                        <h3 class="settings-card-title">🔒 Change Password</h3>
+                        <form id="password-form">
+                            <div class="form-group">
+                                <label for="current-password">Current Password</label>
+                                <input type="password" id="current-password" placeholder="••••••••" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">New Password</label>
+                                <input type="password" id="new-password" placeholder="••••••••" required>
+                                <div class="password-strength">
+                                    <div id="new-password-strength-bar" class="strength-bar"></div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-password">Confirm New Password</label>
+                                <input type="password" id="confirm-password" placeholder="••••••••" required>
+                            </div>
+                            <div id="password-error" class="error-message"></div>
+                            <button type="submit" class="btn btn-primary">Update Password</button>
+                        </form>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="settings-card danger-card">
+                        <h3 class="settings-card-title">⚠️ Danger Zone</h3>
+                        <p class="danger-text">Once you delete your account, there is no going back. Please be certain.
+                        </p>
+                        <button id="delete-account-btn" class="btn btn-danger">Delete Account</button>
                     </div>
                 </div>
             </section>
@@ -429,6 +542,8 @@
     <script src="categories.js"></script>
     <script src="transactions.js"></script>
     <script src="ui-enhancements.js"></script>
+    <script src="quick-wins.js"></script>
+    <script src="settings.js"></script>
     <script src="app.js"></script>
 </body>
 

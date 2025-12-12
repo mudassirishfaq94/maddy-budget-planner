@@ -219,13 +219,23 @@ const Transactions = {
         const container = document.getElementById(containerId);
         let transactions = Storage.getTransactions(this.currentUser.id);
 
-        // Apply filter
+        // Apply type filter
         if (this.currentFilter !== 'all') {
             transactions = transactions.filter(t => t.type === this.currentFilter);
         }
 
-        // Sort by date (newest first)
-        transactions.sort((a, b) => b.date - a.date);
+        // Apply date range filter (QuickWins)
+        if (window.QuickWins) {
+            transactions = QuickWins.filterByDateRange(transactions);
+        }
+
+        // Apply sort (QuickWins)
+        if (window.QuickWins) {
+            transactions = QuickWins.sortTransactions(transactions);
+        } else {
+            // Fallback: Sort by date (newest first)
+            transactions.sort((a, b) => b.date - a.date);
+        }
 
         // Limit to 5 for overview section
         if (containerId === 'transactions-list') {
@@ -248,9 +258,17 @@ const Transactions = {
             const categoryName = category ? category.name : 'Unknown';
             const categoryIcon = category ? category.icon : '❓';
             const date = new Date(transaction.date).toLocaleDateString();
+            const isSelected = window.QuickWins && QuickWins.selectedTransactions.has(transaction.id);
 
             return `
-                <div class="transaction-item">
+                <div class="transaction-item ${isSelected ? 'selected' : ''}" data-id="${transaction.id}">
+                    ${containerId === 'all-transactions-list' ? `
+                        <input type="checkbox" 
+                               class="transaction-checkbox" 
+                               data-id="${transaction.id}"
+                               ${isSelected ? 'checked' : ''}
+                               onclick="QuickWins.toggleSelection('${transaction.id}'); Transactions.renderTransactions();">
+                    ` : ''}
                     <div class="transaction-info">
                         <div class="transaction-icon ${transaction.type}">
                             ${categoryIcon}

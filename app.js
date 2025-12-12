@@ -159,11 +159,24 @@ const App = {
     },
 
     handleLogout() {
-        if (confirm('Are you sure you want to logout?')) {
-            Storage.clearCurrentUser();
-            this.currentUser = null;
-            this.showAuth();
-        }
+        console.log('Logout button clicked');
+        // Use setTimeout to ensure dialog shows properly
+        setTimeout(() => {
+            if (confirm('Are you sure you want to logout?')) {
+                console.log('User confirmed logout');
+                Storage.clearCurrentUser();
+                this.currentUser = null;
+                console.log('Session cleared, showing auth screen');
+                this.showAuth();
+
+                // Show success message
+                if (window.UIEnhancements) {
+                    UIEnhancements.showToast('Logged Out', 'You have been logged out successfully', 'info');
+                }
+            } else {
+                console.log('User cancelled logout');
+            }
+        }, 100);
     },
 
     showError(errorDiv, message) {
@@ -254,6 +267,15 @@ const App = {
             Transactions.updateSummary();
         } else if (section === 'categories') {
             Categories.renderCategories();
+        } else if (section === 'settings') {
+            // Initialize Settings module
+            console.log('Navigating to settings, Settings module exists:', !!window.Settings);
+            if (window.Settings) {
+                console.log('Calling Settings.init with user:', this.currentUser);
+                Settings.init(this.currentUser);
+            } else {
+                console.error('Settings module not found!');
+            }
         }
     }
 };

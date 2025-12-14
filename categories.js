@@ -4,11 +4,41 @@ const Categories = {
     currentUser: null,
 
     listenersAttached: false,
+    incomeCategories: [],
+    expenseCategories: [],
+    unsubscribes: [],
 
     init(user) {
         this.currentUser = user;
-        this.renderCategories();
         this.attachEventListeners();
+
+        // Clear previous listeners
+        this.unsubscribes.forEach(unsub => unsub());
+        this.unsubscribes = [];
+
+        if (window.FirebaseDB) {
+            // Listen to income categories
+            const unsubIncome = FirebaseDB.listenToCategories(user.uid, 'income', (categories) => {
+                this.incomeCategories = categories;
+                this.renderCategories();
+                // Update transaction modal if needed
+                if (Transactions && Transactions.updateCategoryOptions) {
+                    Transactions.updateCategoryOptions();
+                }
+            });
+            this.unsubscribes.push(unsubIncome);
+
+            // Listen to expense categories
+            const unsubExpense = FirebaseDB.listenToCategories(user.uid, 'expense', (categories) => {
+                this.expenseCategories = categories;
+                this.renderCategories();
+                // Update transaction modal if needed
+                if (Transactions && Transactions.updateCategoryOptions) {
+                    Transactions.updateCategoryOptions();
+                }
+            });
+            this.unsubscribes.push(unsubExpense);
+        }
     },
 
     attachEventListeners() {
@@ -64,7 +94,7 @@ const Categories = {
         modal.classList.remove('show');
     },
 
-    handleAddCategory() {
+    async handleAddCategory() {
         const type = document.getElementById('category-type').value;
         const name = document.getElementById('category-name').value.trim();
         const icon = document.getElementById('category-icon').value.trim();
@@ -74,22 +104,29 @@ const Categories = {
             return;
         }
 
-        const category = {
-            id: Storage.generateId(),
-            userId: this.currentUser.id,
-            type: type,
-            name: name,
-            icon: icon,
-            isCustom: true
-        };
+        try {
+            if (window.UIEnhancements) UIEnhancements.showLoading('Adding category...');
 
-        Storage.saveCategory(category);
-        this.renderCategories();
-        this.hideAddCategoryModal();
+            const category = {
+                userId: this.currentUser.uid || this.currentUser.id,
+                type: type,
+                name: name,
+                icon: icon,
+                isCustom: true
+            };
 
-        // Update transaction modal categories if it's open
-        if (Transactions) {
-            Transactions.updateCategoryOptions();
+            await FirebaseDB.saveCategory(category);
+            // Rendering handled by listener
+            this.hideAddCategoryModal();
+
+            if (window.UIEnhancements) {
+                UIEnhancements.showToast('Success', 'Category added successfully', 'success');
+            }
+        } catch (error) {
+            console.error('Error adding category:', error);
+            alert('Error adding category. Please try again.');
+        } finally {
+            if (window.UIEnhancements) UIEnhancements.hideLoading();
         }
     },
 
@@ -100,7 +137,7 @@ const Categories = {
 
     renderIncomeCategories() {
         const container = document.getElementById('income-categories-list');
-        const categories = Storage.getCategories(this.currentUser.id, 'income');
+        const categories = this.incomeCategories; // Use local cache
 
         container.innerHTML = categories.map(category => `
             <div class="category-item">
@@ -118,7 +155,7 @@ const Categories = {
 
     renderExpenseCategories() {
         const container = document.getElementById('expense-categories-list');
-        const categories = Storage.getCategories(this.currentUser.id, 'expense');
+        const categories = this.expenseCategories; // Use local cache
 
         container.innerHTML = categories.map(category => `
             <div class="category-item">
@@ -134,20 +171,36 @@ const Categories = {
         `).join('');
     },
 
-    deleteCategory(categoryId) {
+    async deleteCategory(categoryId) {
         if (confirm('Are you sure you want to delete this category?')) {
-            Storage.deleteCategory(categoryId);
-            this.renderCategories();
+            try {
+                if (window.UIEnhancements) UIEnhancements.showLoading('Deleting category...');
 
-            // Update transaction modal categories if it's open
-            if (Transactions) {
-                Transactions.updateCategoryOptions();
+                await FirebaseDB.deleteCategory(categoryId);
+                // Rendering handled by listener
+
+                if (window.UIEnhancements) {
+                    UIEnhancements.showToast('Deleted', 'Category deleted successfully', 'success');
+                }
+            } catch (error) {
+                console.error('Error deleting category:', error);
+                alert('Error deleting category.');
+            } finally {
+                if (window.UIEnhancements) UIEnhancements.hideLoading();
             }
         }
     },
 
     getCategoryById(categoryId) {
-        const categories = Storage.getCategories();
-        return categories.find(c => c.id === categoryId);
+        // Search in both caches
+        const foundIncome = this.incomeCategories.find(c => c.id === categoryId);
+        if (foundIncome) return foundIncome;
+
+        const foundExpense = this.expenseCategories.find(c => c.id === categoryId);
+        return foundExpense;
+    },
+
+    getCategoriesByType(type) {
+        return type === 'income' ? this.incomeCategories : this.expenseCategories;
     }
 };

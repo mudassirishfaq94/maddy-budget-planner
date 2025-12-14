@@ -6,12 +6,23 @@ const Transactions = {
     currentTransaction: null,
     currentTransactionType: 'income',
     listenersAttached: false,
+    transactions: [], // Local cache
+    unsubscribe: null,
 
     init(user) {
         this.currentUser = user;
         this.attachEventListeners();
-        this.renderTransactions();
-        this.updateSummary();
+
+        // Setup real-time listener
+        if (this.unsubscribe) this.unsubscribe();
+
+        if (window.FirebaseDB) {
+            this.unsubscribe = FirebaseDB.listenToTransactions(user.uid, (transactions) => {
+                this.transactions = transactions;
+                this.renderTransactions();
+                this.updateSummary();
+            });
+        }
     },
 
     attachEventListeners() {
@@ -153,7 +164,8 @@ const Transactions = {
 
     updateCategoryOptions() {
         const select = document.getElementById('transaction-category');
-        const categories = Storage.getCategories(this.currentUser.id, this.currentTransactionType);
+        // Use Categories module which should also be updated to use local cache from Firebase
+        const categories = Categories.getCategoriesByType(this.currentTransactionType);
 
         select.innerHTML = '<option value="">Select category</option>' +
             categories.map(cat => `
@@ -161,58 +173,62 @@ const Transactions = {
             `).join('');
     },
 
-    handleSaveTransaction() {
+    async handleSaveTransaction() {
         const id = document.getElementById('transaction-id').value;
         const category = document.getElementById('transaction-category').value;
         const amount = parseFloat(document.getElementById('transaction-amount').value);
         const description = document.getElementById('transaction-description').value.trim();
         const dateString = document.getElementById('transaction-date').value;
         const [year, month, day] = dateString.split('-').map(Number);
-        const date = new Date(year, month - 1, day).getTime();
+
+        // Create date object for local time 00:00:00
+        const dateObj = new Date(year, month - 1, day);
+
+        // Convert to Firestore Timestamp
+        const dateTimestamp = firebase.firestore.Timestamp.fromDate(dateObj);
 
         if (!category || !amount || !description) {
             alert('Please fill in all fields');
             return;
         }
 
-        if (id) {
-            // Update existing transaction
-            Storage.updateTransaction(id, {
+        try {
+            if (window.UIEnhancements) UIEnhancements.showLoading('Saving transaction...');
+
+            const transactionData = {
+                userId: this.currentUser.uid || this.currentUser.id, // Handle both Firebase User and local object
                 type: this.currentTransactionType,
                 category: category,
                 amount: amount,
                 description: description,
-                date: date
-            });
-        } else {
-            // Create new transaction
-            const transaction = {
-                id: Storage.generateId(),
-                userId: this.currentUser.id,
-                type: this.currentTransactionType,
-                category: category,
-                amount: amount,
-                description: description,
-                date: date,
-                createdAt: Date.now(),
-                updatedAt: Date.now()
+                date: dateTimestamp
             };
 
-            Storage.saveTransaction(transaction);
-        }
+            if (id) {
+                // Update existing transaction
+                await FirebaseDB.updateTransaction(id, transactionData);
+            } else {
+                // Create new transaction
+                await FirebaseDB.saveTransaction(transactionData);
+            }
 
-        this.hideTransactionModal();
-        this.renderTransactions();
-        this.updateSummary();
+            this.hideTransactionModal();
+            // Rendering happens automatically via listener
 
-        // Show success notification
-        if (window.UIEnhancements) {
-            const action = id ? 'updated' : 'added';
-            UIEnhancements.showToast(
-                'Success!',
-                `Transaction ${action} successfully`,
-                'success'
-            );
+            // Show success notification
+            if (window.UIEnhancements) {
+                const action = id ? 'updated' : 'added';
+                UIEnhancements.showToast(
+                    'Success!',
+                    `Transaction ${action} successfully`,
+                    'success'
+                );
+            }
+        } catch (error) {
+            console.error('Error saving transaction:', error);
+            alert('Error saving transaction. Please try again.');
+        } finally {
+            if (window.UIEnhancements) UIEnhancements.hideLoading();
         }
     },
 
@@ -223,7 +239,7 @@ const Transactions = {
 
     renderTransactionList(containerId) {
         const container = document.getElementById(containerId);
-        let transactions = Storage.getTransactions(this.currentUser.id);
+        let transactions = [...this.transactions]; // Use local cache
 
         // Apply type filter
         if (this.currentFilter !== 'all') {
@@ -298,7 +314,7 @@ const Transactions = {
 
     searchTransactions(query, containerId = 'all-transactions-list') {
         const container = document.getElementById(containerId);
-        let transactions = Storage.getTransactions(this.currentUser.id);
+        let transactions = [...this.transactions]; // Use local cache
 
         // Apply filter
         if (this.currentFilter !== 'all') {
@@ -365,7 +381,7 @@ const Transactions = {
     },
 
     updateSummary() {
-        const transactions = Storage.getTransactions(this.currentUser.id);
+        const transactions = this.transactions;
 
         const totalIncome = transactions
             .filter(t => t.type === 'income')
@@ -383,8 +399,7 @@ const Transactions = {
     },
 
     editTransaction(transactionId) {
-        const transactions = Storage.getTransactions();
-        const transaction = transactions.find(t => t.id === transactionId);
+        const transaction = this.transactions.find(t => t.id === transactionId);
 
         if (transaction) {
             this.showTransactionModal(transaction);
@@ -398,21 +413,30 @@ const Transactions = {
         modal.classList.add('show');
     },
 
-    confirmDelete() {
+    async confirmDelete() {
         if (this.transactionToDelete) {
-            Storage.deleteTransaction(this.transactionToDelete);
-            this.transactionToDelete = null;
-            this.hideDeleteModal();
-            this.renderTransactions();
-            this.updateSummary();
+            try {
+                if (window.UIEnhancements) UIEnhancements.showLoading('Deleting transaction...');
 
-            // Show success notification
-            if (window.UIEnhancements) {
-                UIEnhancements.showToast(
-                    'Deleted',
-                    'Transaction deleted successfully',
-                    'success'
-                );
+                await FirebaseDB.deleteTransaction(this.transactionToDelete);
+
+                this.transactionToDelete = null;
+                this.hideDeleteModal();
+                // Rendering handled by listener
+
+                // Show success notification
+                if (window.UIEnhancements) {
+                    UIEnhancements.showToast(
+                        'Deleted',
+                        'Transaction deleted successfully',
+                        'success'
+                    );
+                }
+            } catch (error) {
+                console.error('Error deleting transaction:', error);
+                alert('Error deleting transaction. Please try again.');
+            } finally {
+                if (window.UIEnhancements) UIEnhancements.hideLoading();
             }
         }
     },

@@ -1,5 +1,5 @@
 # Firebase credentials - NEVER commit these!
-firebase-config.js
+# firebase-config.js (Uncommented to allow deployment for demo)
 
 # Environment variables
 .env

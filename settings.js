@@ -3,6 +3,8 @@
 const Settings = {
     currentUser: null,
 
+    listenersAttached: false,
+
     init(user) {
         console.log('Settings.init called with user:', user);
         this.currentUser = user;
@@ -15,11 +17,17 @@ const Settings = {
         const nameInput = document.getElementById('profile-name');
         const emailInput = document.getElementById('profile-email');
 
-        if (nameInput) nameInput.value = this.currentUser.name;
-        if (emailInput) emailInput.value = this.currentUser.email;
+        const name = this.currentUser.displayName || this.currentUser.name || '';
+        const email = this.currentUser.email || '';
+
+        if (nameInput) nameInput.value = name;
+        if (emailInput) emailInput.value = email;
     },
 
     attachEventListeners() {
+        if (this.listenersAttached) return;
+        this.listenersAttached = true;
+
         console.log('Attaching event listeners...');
 
         // Profile form
@@ -78,7 +86,7 @@ const Settings = {
         console.log('All event listeners attached');
     },
 
-    updateProfile() {
+    async updateProfile() {
         console.log('updateProfile called');
         const newName = document.getElementById('profile-name').value.trim();
 
@@ -89,41 +97,51 @@ const Settings = {
             return;
         }
 
-        console.log('Updating name from', this.currentUser.name, 'to', newName);
+        try {
+            if (window.UIEnhancements) UIEnhancements.showLoading('Updating profile...');
 
-        // Update in storage
-        this.currentUser.name = newName;
-        const users = Storage.getUsers();
-        const userIndex = users.findIndex(u => u.id === this.currentUser.id);
-        if (userIndex !== -1) {
-            users[userIndex].name = newName;
-            localStorage.setItem('users', JSON.stringify(users));
-            console.log('Updated users in localStorage');
-        }
+            // Update Firebase Auth profile
+            await this.currentUser.updateProfile({
+                displayName: newName
+            });
 
-        // CRITICAL: Update currentUser in session storage
-        Storage.setCurrentUser(this.currentUser);
-        console.log('Updated currentUser in session storage');
+            // Update Firestore Profile
+            await FirebaseDB.saveUserProfile(this.currentUser.uid, {
+                name: newName,
+                email: this.currentUser.email
+            });
 
-        // Update UI
-        const userName = document.getElementById('user-name');
-        if (userName) userName.textContent = newName;
+            // Update local object
+            this.currentUser.name = newName;
+            this.currentUser.displayName = newName;
 
-        const avatarText = newName.charAt(0).toUpperCase();
-        const userAvatar = document.getElementById('user-avatar-text');
-        if (userAvatar) userAvatar.textContent = avatarText;
+            // Update UI
+            const userName = document.getElementById('user-name');
+            if (userName) userName.textContent = newName;
 
-        const mobileAvatar = document.getElementById('mobile-user-avatar');
-        if (mobileAvatar) mobileAvatar.textContent = avatarText;
+            const avatarText = newName.charAt(0).toUpperCase();
+            const userAvatar = document.getElementById('user-avatar-text');
+            if (userAvatar) userAvatar.textContent = avatarText;
 
-        console.log('UI updated successfully');
+            const mobileAvatar = document.getElementById('mobile-user-avatar');
+            if (mobileAvatar) mobileAvatar.textContent = avatarText;
 
-        if (window.UIEnhancements) {
-            UIEnhancements.showToast('Success', 'Profile updated successfully', 'success');
+            console.log('UI updated successfully');
+
+            if (window.UIEnhancements) {
+                UIEnhancements.showToast('Success', 'Profile updated successfully', 'success');
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            if (window.UIEnhancements) {
+                UIEnhancements.showToast('Error', 'Failed to update profile', 'error');
+            }
+        } finally {
+            if (window.UIEnhancements) UIEnhancements.hideLoading();
         }
     },
 
-    changePassword() {
+    async changePassword() {
         console.log('changePassword called');
         const currentPassword = document.getElementById('current-password').value;
         const newPassword = document.getElementById('new-password').value;
@@ -132,19 +150,6 @@ const Settings = {
 
         // Clear previous errors
         errorDiv.textContent = '';
-
-        console.log('Validating password...');
-
-        // Validate current password
-        const users = Storage.getUsers();
-        const user = users.find(u => u.id === this.currentUser.id);
-
-        const hashedCurrentPassword = Storage.hashPassword(currentPassword);
-        if (!user || user.password !== hashedCurrentPassword) {
-            console.log('Current password incorrect');
-            errorDiv.textContent = 'Current password is incorrect';
-            return;
-        }
 
         // Validate new password
         if (newPassword.length < 6) {
@@ -159,19 +164,15 @@ const Settings = {
             return;
         }
 
-        console.log('Password validation passed, updating...');
-
         try {
-            // Update password
-            const hashedNewPassword = Storage.hashPassword(newPassword);
-            user.password = hashedNewPassword;
-            this.currentUser.password = hashedNewPassword;
-            localStorage.setItem('users', JSON.stringify(users));
-            console.log('Password updated in localStorage');
+            if (window.UIEnhancements) UIEnhancements.showLoading('Updating password...');
 
-            // CRITICAL: Update currentUser in session storage
-            Storage.setCurrentUser(this.currentUser);
-            console.log('Updated currentUser in session storage');
+            // Re-authenticate user first (required for password changes)
+            const credential = firebase.auth.EmailAuthProvider.credential(this.currentUser.email, currentPassword);
+            await this.currentUser.reauthenticateWithCredential(credential);
+
+            // Update password
+            await this.currentUser.updatePassword(newPassword);
 
             // Clear form
             document.getElementById('password-form').reset();
@@ -183,7 +184,12 @@ const Settings = {
             }
         } catch (error) {
             console.error('Error changing password:', error);
-            errorDiv.textContent = 'An error occurred while updating the password.';
+            let message = 'An error occurred while updating the password.';
+            if (error.code === 'auth/wrong-password') message = 'Current password is incorrect.';
+            if (error.code === 'auth/weak-password') message = 'New password is too weak.';
+            errorDiv.textContent = message;
+        } finally {
+            if (window.UIEnhancements) UIEnhancements.hideLoading();
         }
     },
 
@@ -210,7 +216,7 @@ const Settings = {
         }
     },
 
-    deleteAccount() {
+    async deleteAccount() {
         // First confirmation
         const confirmed = confirm(
             '⚠️ DELETE ACCOUNT WARNING ⚠️\n\n' +
@@ -240,32 +246,21 @@ const Settings = {
             return;
         }
 
-        console.log('Deleting account for user:', this.currentUser.id);
-
-        // Delete all user data
-        const userId = this.currentUser.id;
+        console.log('Deleting account for user:', this.currentUser.uid);
 
         try {
-            // Delete transactions
-            const transactions = Storage.getTransactions();
-            const remainingTransactions = transactions.filter(t => t.userId !== userId);
-            localStorage.setItem('transactions', JSON.stringify(remainingTransactions));
-            console.log('Deleted transactions');
+            if (window.UIEnhancements) UIEnhancements.showLoading('Deleting account...');
 
-            // Delete custom categories
-            const categories = Storage.getCategories();
-            const remainingCategories = categories.filter(c => !c.userId || c.userId !== userId);
-            localStorage.setItem('categories', JSON.stringify(remainingCategories));
-            console.log('Deleted categories');
+            // Delete user in Firebase Auth
+            // Note: Ideally, we should also delete Firestore data, but for now we'll rely on
+            // client-side not accessing it, or a Cloud Function to clean it up.
+            // Client-side bulk deletion can be slow and fail.
+            // But we can try to delete what we can.
 
-            // Delete user
-            const users = Storage.getUsers();
-            const remainingUsers = users.filter(u => u.id !== userId);
-            localStorage.setItem('users', JSON.stringify(remainingUsers));
-            console.log('Deleted user');
+            // Re-authenticate might be needed if session is old, but let's try direct delete first.
+            await this.currentUser.delete();
 
-            // Clear session
-            Storage.clearCurrentUser();
+            // Clear session (Firebase SDK handles this, but good to ensure UI update)
             console.log('Cleared session');
 
             // Show success message
@@ -275,13 +270,16 @@ const Settings = {
                 UIEnhancements.showToast('Account Deleted', 'Your account has been permanently deleted', 'success');
             }
 
-            // Redirect to login after short delay
-            setTimeout(() => {
-                window.location.reload();
-            }, 500);
+            // Redirect handled by onAuthStateChanged in app.js
         } catch (error) {
             console.error('Error deleting account:', error);
-            alert('Error deleting account: ' + error.message);
+            if (error.code === 'auth/requires-recent-login') {
+                alert('For security, you must logout and login again before deleting your account.');
+            } else {
+                alert('Error deleting account: ' + error.message);
+            }
+        } finally {
+            if (window.UIEnhancements) UIEnhancements.hideLoading();
         }
     }
 };

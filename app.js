@@ -6,17 +6,33 @@ const App = {
     init() {
         this.checkAuth();
         this.attachAuthListeners();
+
+        // Initialize default categories if needed
+        if (window.FirebaseDB) {
+            FirebaseDB.initializeDefaultCategories().catch(console.error);
+        }
     },
 
     checkAuth() {
-        const user = Storage.getCurrentUser();
-
-        if (user) {
-            this.currentUser = user;
-            this.showDashboard();
-        } else {
-            this.showAuth();
-        }
+        // Use Firebase Auth listener
+        firebase.auth().onAuthStateChanged(async (user) => {
+            if (user) {
+                this.currentUser = user;
+                // Fetch additional user profile data from Firestore
+                try {
+                    const userProfile = await FirebaseDB.getUserProfile(user.uid);
+                    if (userProfile) {
+                        this.currentUser = { ...user, ...userProfile };
+                    }
+                } catch (e) {
+                    console.error("Error fetching user profile", e);
+                }
+                this.showDashboard();
+            } else {
+                this.currentUser = null;
+                this.showAuth();
+            }
+        });
     },
 
     attachAuthListeners() {
@@ -89,7 +105,7 @@ const App = {
         hamburgerBtn.classList.remove('active');
     },
 
-    handleLogin() {
+    async handleLogin() {
         const email = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value;
         const errorDiv = document.getElementById('login-error');
@@ -99,27 +115,22 @@ const App = {
             return;
         }
 
-        const user = Storage.findUserByEmail(email);
-
-        if (!user) {
-            this.showError(errorDiv, 'User not found. Please sign up.');
-            return;
+        try {
+            if (window.UIEnhancements) UIEnhancements.showLoading('Signing in...');
+            await firebase.auth().signInWithEmailAndPassword(email, password);
+            // onAuthStateChanged will handle the rest
+        } catch (error) {
+            console.error('Login error:', error);
+            let message = 'Failed to login. Please check your credentials.';
+            if (error.code === 'auth/user-not-found') message = 'User not found. Please sign up.';
+            if (error.code === 'auth/wrong-password') message = 'Incorrect password.';
+            this.showError(errorDiv, message);
+        } finally {
+            if (window.UIEnhancements) UIEnhancements.hideLoading();
         }
-
-        const hashedPassword = Storage.hashPassword(password);
-
-        if (user.password !== hashedPassword) {
-            this.showError(errorDiv, 'Incorrect password');
-            return;
-        }
-
-        // Login successful
-        this.currentUser = user;
-        Storage.setCurrentUser(user);
-        this.showDashboard();
     },
 
-    handleSignup() {
+    async handleSignup() {
         const name = document.getElementById('signup-name').value.trim();
         const email = document.getElementById('signup-email').value.trim();
         const password = document.getElementById('signup-password').value;
@@ -135,48 +146,48 @@ const App = {
             return;
         }
 
-        // Check if user already exists
-        const existingUser = Storage.findUserByEmail(email);
+        try {
+            if (window.UIEnhancements) UIEnhancements.showLoading('Creating account...');
 
-        if (existingUser) {
-            this.showError(errorDiv, 'User already exists. Please login.');
-            return;
+            // Create user in Firebase Auth
+            const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+            const user = userCredential.user;
+
+            // Save additional profile info to Firestore
+            await FirebaseDB.saveUserProfile(user.uid, {
+                name: name,
+                email: email
+            });
+
+            // Trigger onboarding
+            if (window.UIEnhancements) {
+                UIEnhancements.triggerOnboarding();
+            }
+
+            // onAuthStateChanged will handle the redirect
+        } catch (error) {
+            console.error('Signup error:', error);
+            let message = 'Failed to create account.';
+            if (error.code === 'auth/email-already-in-use') message = 'Email already in use. Please login.';
+            if (error.code === 'auth/invalid-email') message = 'Invalid email address.';
+            this.showError(errorDiv, message);
+        } finally {
+            if (window.UIEnhancements) UIEnhancements.hideLoading();
         }
-
-        // Create new user
-        const user = {
-            id: Storage.generateId(),
-            name: name,
-            email: email,
-            password: Storage.hashPassword(password),
-            createdAt: Date.now()
-        };
-
-        Storage.saveUser(user);
-        this.currentUser = user;
-        Storage.setCurrentUser(user);
-        this.showDashboard();
     },
 
-    handleLogout() {
-        console.log('Logout button clicked');
-        // Use setTimeout to ensure dialog shows properly
-        setTimeout(() => {
-            if (confirm('Are you sure you want to logout?')) {
-                console.log('User confirmed logout');
-                Storage.clearCurrentUser();
-                this.currentUser = null;
-                console.log('Session cleared, showing auth screen');
-                this.showAuth();
-
-                // Show success message
+    async handleLogout() {
+        if (confirm('Are you sure you want to logout?')) {
+            try {
+                await firebase.auth().signOut();
                 if (window.UIEnhancements) {
                     UIEnhancements.showToast('Logged Out', 'You have been logged out successfully', 'info');
                 }
-            } else {
-                console.log('User cancelled logout');
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Error logging out');
             }
-        }, 100);
+        }
     },
 
     showError(errorDiv, message) {
@@ -229,9 +240,13 @@ const App = {
         document.getElementById('dashboard-screen').classList.remove('hidden');
 
         // Update user info
-        document.getElementById('user-name').textContent = this.currentUser.name;
-        document.getElementById('user-email').textContent = this.currentUser.email;
-        const avatarText = this.currentUser.name.charAt(0).toUpperCase();
+        // Note: currentUser might be Firebase User object or merged object
+        const name = this.currentUser.displayName || this.currentUser.name || this.currentUser.email.split('@')[0];
+        const email = this.currentUser.email;
+
+        document.getElementById('user-name').textContent = name;
+        document.getElementById('user-email').textContent = email;
+        const avatarText = name.charAt(0).toUpperCase();
         document.getElementById('user-avatar-text').textContent = avatarText;
 
         // Update mobile avatar
@@ -240,7 +255,7 @@ const App = {
             mobileAvatar.textContent = avatarText;
         }
 
-        // Initialize modules
+        // Initialize modules with Firebase User ID
         Categories.init(this.currentUser);
         Transactions.init(this.currentUser);
 
@@ -269,12 +284,8 @@ const App = {
             Categories.renderCategories();
         } else if (section === 'settings') {
             // Initialize Settings module
-            console.log('Navigating to settings, Settings module exists:', !!window.Settings);
             if (window.Settings) {
-                console.log('Calling Settings.init with user:', this.currentUser);
                 Settings.init(this.currentUser);
-            } else {
-                console.error('Settings module not found!');
             }
         }
     }

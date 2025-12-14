@@ -7,143 +7,12 @@ const UIEnhancements = {
 
     init() {
         this.setupKeyboardShortcuts();
-        this.setupOnboarding();
         this.setupSessionTimeout();
         this.showShortcutsHint();
+        this.attachOnboardingListeners();
     },
 
-    // Toast Notifications
-    showToast(title, message, type = 'info') {
-        const container = document.getElementById('toast-container');
-        const toastId = `toast-${this.toastCount++}`;
-
-        const icons = {
-            success: '✅',
-            error: '❌',
-            info: 'ℹ️',
-            warning: '⚠️'
-        };
-
-        const toast = document.createElement('div');
-        toast.id = toastId;
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `
-            <div class="toast-icon">${icons[type] || icons.info}</div>
-            <div class="toast-content">
-                <div class="toast-title">${title}</div>
-                <div class="toast-message">${message}</div>
-            </div>
-            <button class="toast-close" onclick="UIEnhancements.hideToast('${toastId}')">&times;</button>
-        `;
-
-        container.appendChild(toast);
-
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            this.hideToast(toastId);
-        }, 5000);
-    },
-
-    hideToast(toastId) {
-        const toast = document.getElementById(toastId);
-        if (toast) {
-            toast.classList.add('hiding');
-            setTimeout(() => {
-                toast.remove();
-            }, 300);
-        }
-    },
-
-    // Loading Overlay
-    showLoading(message = 'Loading...') {
-        const existing = document.getElementById('loading-overlay');
-        if (existing) return;
-
-        const overlay = document.createElement('div');
-        overlay.id = 'loading-overlay';
-        overlay.className = 'loading-overlay';
-        overlay.innerHTML = `
-            <div>
-                <div class="loading-spinner"></div>
-                <div class="loading-text">${message}</div>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-    },
-
-    hideLoading() {
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) {
-            overlay.remove();
-        }
-    },
-
-    // Keyboard Shortcuts
-    setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            // Alt + N: New Transaction
-            if (e.altKey && e.key === 'n') {
-                e.preventDefault();
-                const addBtn = document.getElementById('add-transaction-btn');
-                if (addBtn && !document.querySelector('.modal.show')) {
-                    addBtn.click();
-                    this.showToast('Shortcut Used', 'New transaction modal opened', 'info');
-                }
-            }
-
-            // Escape: Close modals
-            if (e.key === 'Escape') {
-                const modals = document.querySelectorAll('.modal.show');
-                modals.forEach(modal => {
-                    const closeBtn = modal.querySelector('.modal-close');
-                    if (closeBtn) closeBtn.click();
-                });
-
-                const onboarding = document.getElementById('onboarding-modal');
-                if (onboarding && !onboarding.classList.contains('hidden')) {
-                    this.hideOnboarding();
-                }
-            }
-
-            // Alt + S: Focus search
-            if (e.altKey && e.key === 's') {
-                e.preventDefault();
-                const searchInput = document.getElementById('search-transactions');
-                if (searchInput) {
-                    searchInput.focus();
-                    this.showToast('Shortcut Used', 'Search focused', 'info');
-                }
-            }
-        });
-    },
-
-    showShortcutsHint() {
-        setTimeout(() => {
-            const hint = document.getElementById('shortcuts-hint');
-            if (hint) {
-                hint.classList.remove('hidden');
-                hint.textContent = 'Press Alt+N to add a new transaction'; // Added this line
-
-                // Hide after 10 seconds
-                setTimeout(() => {
-                    hint.classList.add('hidden');
-                }, 10000);
-            }
-        }, 3000);
-    },
-
-    // Onboarding
-    setupOnboarding() {
-        const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-
-        if (!hasSeenOnboarding) {
-            // Show onboarding after a short delay
-            setTimeout(() => {
-                this.showOnboarding();
-            }, 1000);
-        }
-
-        // Setup onboarding button
+    attachOnboardingListeners() {
         const startBtn = document.getElementById('start-tour-btn');
         if (startBtn) {
             startBtn.addEventListener('click', () => {
@@ -152,6 +21,15 @@ const UIEnhancements = {
                 this.showToast('Welcome!', 'You\'re all set! Start by adding your first transaction.', 'success');
             });
         }
+    },
+
+    triggerOnboarding() {
+        this.showOnboarding();
+    },
+
+    // Old method for backward compatibility if needed, but empty now to prevent auto-show
+    setupOnboarding() {
+        // Disabled auto-show
     },
 
     showOnboarding() {

@@ -5,6 +5,7 @@ const Transactions = {
     currentFilter: 'all',
     currentTransaction: null,
     currentTransactionType: 'income',
+    listenersAttached: false,
 
     init(user) {
         this.currentUser = user;
@@ -14,6 +15,9 @@ const Transactions = {
     },
 
     attachEventListeners() {
+        if (this.listenersAttached) return;
+        this.listenersAttached = true;
+
         // Add transaction button
         document.getElementById('add-transaction-btn').addEventListener('click', () => {
             this.showTransactionModal();
@@ -162,7 +166,9 @@ const Transactions = {
         const category = document.getElementById('transaction-category').value;
         const amount = parseFloat(document.getElementById('transaction-amount').value);
         const description = document.getElementById('transaction-description').value.trim();
-        const date = new Date(document.getElementById('transaction-date').value).getTime();
+        const dateString = document.getElementById('transaction-date').value;
+        const [year, month, day] = dateString.split('-').map(Number);
+        const date = new Date(year, month - 1, day).getTime();
 
         if (!category || !amount || !description) {
             alert('Please fill in all fields');

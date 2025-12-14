@@ -3,6 +3,8 @@
 const Categories = {
     currentUser: null,
 
+    listenersAttached: false,
+
     init(user) {
         this.currentUser = user;
         this.renderCategories();
@@ -10,6 +12,9 @@ const Categories = {
     },
 
     attachEventListeners() {
+        if (this.listenersAttached) return;
+        this.listenersAttached = true;
+
         // Add income category button
         document.getElementById('add-income-category-btn').addEventListener('click', () => {
             this.showAddCategoryModal('income');

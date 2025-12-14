@@ -161,24 +161,29 @@ const Settings = {
 
         console.log('Password validation passed, updating...');
 
-        // Update password
-        const hashedNewPassword = Storage.hashPassword(newPassword);
-        user.password = hashedNewPassword;
-        this.currentUser.password = hashedNewPassword;
-        localStorage.setItem('users', JSON.stringify(users));
-        console.log('Password updated in localStorage');
+        try {
+            // Update password
+            const hashedNewPassword = Storage.hashPassword(newPassword);
+            user.password = hashedNewPassword;
+            this.currentUser.password = hashedNewPassword;
+            localStorage.setItem('users', JSON.stringify(users));
+            console.log('Password updated in localStorage');
 
-        // CRITICAL: Update currentUser in session storage
-        Storage.setCurrentUser(this.currentUser);
-        console.log('Updated currentUser in session storage');
+            // CRITICAL: Update currentUser in session storage
+            Storage.setCurrentUser(this.currentUser);
+            console.log('Updated currentUser in session storage');
 
-        // Clear form
-        document.getElementById('password-form').reset();
+            // Clear form
+            document.getElementById('password-form').reset();
 
-        console.log('Password changed successfully');
+            console.log('Password changed successfully');
 
-        if (window.UIEnhancements) {
-            UIEnhancements.showToast('Success', 'Password changed successfully', 'success');
+            if (window.UIEnhancements) {
+                UIEnhancements.showToast('Success', 'Password changed successfully', 'success');
+            }
+        } catch (error) {
+            console.error('Error changing password:', error);
+            errorDiv.textContent = 'An error occurred while updating the password.';
         }
     },
 
@@ -260,7 +265,7 @@ const Settings = {
             console.log('Deleted user');
 
             // Clear session
-            localStorage.removeItem('currentUser');
+            Storage.clearCurrentUser();
             console.log('Cleared session');
 
             // Show success message
@@ -273,10 +278,10 @@ const Settings = {
             // Redirect to login after short delay
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 500);
         } catch (error) {
             console.error('Error deleting account:', error);
-            alert('Error deleting account. Please try again.');
+            alert('Error deleting account: ' + error.message);
         }
     }
 };

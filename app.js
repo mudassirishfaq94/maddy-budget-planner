@@ -17,7 +17,21 @@ const App = {
                 try {
                     const userProfile = await FirebaseDB.getUserProfile(user.uid);
                     if (userProfile) {
-                        this.currentUser = { ...user, ...userProfile };
+                        // Create a safe object with explicit properties to avoid losing uid
+                        this.currentUser = {
+                            uid: user.uid,
+                            email: user.email,
+                            displayName: user.displayName,
+                            photoURL: user.photoURL,
+                            ...userProfile
+                        };
+                    } else {
+                        this.currentUser = {
+                            uid: user.uid,
+                            email: user.email,
+                            displayName: user.displayName,
+                            photoURL: user.photoURL
+                        };
                     }
                 } catch (e) {
                     console.error("Error fetching user profile", e);

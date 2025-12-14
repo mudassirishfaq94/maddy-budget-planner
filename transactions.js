@@ -10,6 +10,7 @@ const Transactions = {
     unsubscribe: null,
 
     init(user) {
+        console.log('Transactions.init called', user);
         this.currentUser = user;
         this.attachEventListeners();
 
@@ -26,13 +27,26 @@ const Transactions = {
     },
 
     attachEventListeners() {
-        if (this.listenersAttached) return;
+        console.log('attachEventListeners called. Already attached:', this.listenersAttached);
+        if (this.listenersAttached) {
+            console.warn('Listeners already attached, skipping.');
+            return;
+        }
         this.listenersAttached = true;
 
-        // Add transaction button
-        document.getElementById('add-transaction-btn').addEventListener('click', () => {
-            this.showTransactionModal();
-        });
+        const addBtn = document.getElementById('add-transaction-btn');
+        console.log('Add Transaction Button:', addBtn);
+
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                console.log('Add Transaction Button Clicked');
+                this.showTransactionModal();
+            });
+        } else {
+            console.error('CRITICAL: add-transaction-btn NOT FOUND');
+        }
+
+        // Transaction form submission
 
         // Transaction form submission
         document.getElementById('transaction-form').addEventListener('submit', (e) => {

@@ -8,9 +8,10 @@ const App = {
         this.attachAuthListeners();
 
         // Initialize default categories if needed
-        if (window.FirebaseDB) {
-            FirebaseDB.initializeDefaultCategories().catch(console.error);
-        }
+        // Moved to checkAuth/onAuthStateChanged to ensure user is logged in
+        // if (window.FirebaseDB) {
+        //     FirebaseDB.initializeDefaultCategories().catch(console.error);
+        // }
     },
 
     checkAuth() {

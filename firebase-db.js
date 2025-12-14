@@ -27,6 +27,29 @@ const FirebaseDB = {
     },
 
     // Transaction Operations
+    // Default Categories Hardcoded
+    DEFAULT_CATEGORIES: [
+        // Income
+        { id: 'default_inc_1', type: 'income', name: 'Salary', icon: '💼', isCustom: false, userId: null },
+        { id: 'default_inc_2', type: 'income', name: 'Freelance', icon: '💻', isCustom: false, userId: null },
+        { id: 'default_inc_3', type: 'income', name: 'Investment', icon: '📈', isCustom: false, userId: null },
+        { id: 'default_inc_4', type: 'income', name: 'Business', icon: '🏢', isCustom: false, userId: null },
+        { id: 'default_inc_5', type: 'income', name: 'Gift', icon: '🎁', isCustom: false, userId: null },
+        { id: 'default_inc_6', type: 'income', name: 'Other', icon: '💰', isCustom: false, userId: null },
+
+        // Expense
+        { id: 'default_exp_1', type: 'expense', name: 'Food & Dining', icon: '🍔', isCustom: false, userId: null },
+        { id: 'default_exp_2', type: 'expense', name: 'Transport', icon: '🚗', isCustom: false, userId: null },
+        { id: 'default_exp_3', type: 'expense', name: 'Housing', icon: '🏠', isCustom: false, userId: null },
+        { id: 'default_exp_4', type: 'expense', name: 'Entertainment', icon: '🎬', isCustom: false, userId: null },
+        { id: 'default_exp_5', type: 'expense', name: 'Healthcare', icon: '⚕️', isCustom: false, userId: null },
+        { id: 'default_exp_6', type: 'expense', name: 'Shopping', icon: '🛍️', isCustom: false, userId: null },
+        { id: 'default_exp_7', type: 'expense', name: 'Bills & Utilities', icon: '📄', isCustom: false, userId: null },
+        { id: 'default_exp_8', type: 'expense', name: 'Education', icon: '📚', isCustom: false, userId: null },
+        { id: 'default_exp_9', type: 'expense', name: 'Other', icon: '💸', isCustom: false, userId: null }
+    ],
+
+    // Transaction Operations
     async saveTransaction(transaction) {
         try {
             const docRef = await db.collection('transactions').add({
@@ -97,29 +120,36 @@ const FirebaseDB = {
     },
 
     listenToCategories(userId, type, callback) {
-        // Get default categories (userId is null) and user's custom categories
+        // Get hardcoded defaults for this type
+        const defaults = this.DEFAULT_CATEGORIES.filter(c => c.type === type);
+
+        // Listen only for user's custom categories
         return db.collection('categories')
+            .where('userId', '==', userId)
             .where('type', '==', type)
             .onSnapshot((snapshot) => {
-                const categories = [];
+                const customCategories = [];
                 snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    // Include if it's a default category or belongs to the user
-                    if (!data.userId || data.userId === userId) {
-                        categories.push({
-                            id: doc.id,
-                            ...data
-                        });
-                    }
+                    customCategories.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
                 });
-                callback(categories);
+                // Combine defaults and custom
+                callback([...defaults, ...customCategories]);
             }, (error) => {
                 console.error('Error listening to categories:', error);
+                // Return at least defaults on error
+                callback(defaults);
             });
     },
 
     async deleteCategory(categoryId) {
         try {
+            // Cannot delete default categories
+            if (categoryId.startsWith('default_')) {
+                throw new Error('Cannot delete default category');
+            }
             await db.collection('categories').doc(categoryId).delete();
             return true;
         } catch (error) {
@@ -128,53 +158,10 @@ const FirebaseDB = {
         }
     },
 
-    // Initialize default categories (run once)
+    // Initialize default categories (Deprecated - using local defaults)
     async initializeDefaultCategories() {
-        try {
-            // Check if defaults already exist
-            const snapshot = await db.collection('categories')
-                .where('isCustom', '==', false)
-                .limit(1)
-                .get();
-
-            if (!snapshot.empty) {
-                console.log('Default categories already initialized');
-                return;
-            }
-
-            const defaultCategories = [
-                // Income categories
-                { type: 'income', name: 'Salary', icon: '💼', isCustom: false, userId: null },
-                { type: 'income', name: 'Freelance', icon: '💻', isCustom: false, userId: null },
-                { type: 'income', name: 'Investment', icon: '📈', isCustom: false, userId: null },
-                { type: 'income', name: 'Business', icon: '🏢', isCustom: false, userId: null },
-                { type: 'income', name: 'Gift', icon: '🎁', isCustom: false, userId: null },
-                { type: 'income', name: 'Other', icon: '💰', isCustom: false, userId: null },
-
-                // Expense categories
-                { type: 'expense', name: 'Food & Dining', icon: '🍔', isCustom: false, userId: null },
-                { type: 'expense', name: 'Transport', icon: '🚗', isCustom: false, userId: null },
-                { type: 'expense', name: 'Housing', icon: '🏠', isCustom: false, userId: null },
-                { type: 'expense', name: 'Entertainment', icon: '🎬', isCustom: false, userId: null },
-                { type: 'expense', name: 'Healthcare', icon: '⚕️', isCustom: false, userId: null },
-                { type: 'expense', name: 'Shopping', icon: '🛍️', isCustom: false, userId: null },
-                { type: 'expense', name: 'Bills & Utilities', icon: '📄', isCustom: false, userId: null },
-                { type: 'expense', name: 'Education', icon: '📚', isCustom: false, userId: null },
-                { type: 'expense', name: 'Other', icon: '💸', isCustom: false, userId: null }
-            ];
-
-            const batch = db.batch();
-            defaultCategories.forEach((category) => {
-                const docRef = db.collection('categories').doc();
-                batch.set(docRef, category);
-            });
-
-            await batch.commit();
-            console.log('Default categories initialized successfully');
-        } catch (error) {
-            console.error('Error initializing default categories:', error);
-            throw error;
-        }
+        // No-op
+        return Promise.resolve();
     },
 
     // Utility function to generate Firestore-compatible timestamp

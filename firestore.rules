@@ -25,7 +25,7 @@ service cloud.firestore {
     
     match /categories/{categoryId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.isCustom == true && request.resource.data.keys().hasAll(['userId', 'type', 'name', 'icon', 'isCustom']) && request.resource.data.type in ['income', 'expense'];
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.isCustom == true;
       allow update: if false;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid && resource.data.isCustom == true;
     }

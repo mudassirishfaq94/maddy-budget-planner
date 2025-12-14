@@ -108,40 +108,47 @@ const Transactions = {
     },
 
     showTransactionModal(transaction = null) {
-        const modal = document.getElementById('transaction-modal');
-        const title = document.getElementById('transaction-modal-title');
+        try {
+            console.log('Opening transaction modal', transaction);
+            const modal = document.getElementById('transaction-modal');
+            const title = document.getElementById('transaction-modal-title');
 
-        if (transaction) {
-            // Edit mode
-            this.currentTransaction = transaction;
-            title.textContent = 'Edit Transaction';
+            if (transaction) {
+                // Edit mode
+                this.currentTransaction = transaction;
+                title.textContent = 'Edit Transaction';
 
-            document.getElementById('transaction-id').value = transaction.id;
-            document.getElementById('transaction-amount').value = transaction.amount;
-            document.getElementById('transaction-description').value = transaction.description;
-            document.getElementById('transaction-date').value = new Date(transaction.date).toISOString().split('T')[0];
+                document.getElementById('transaction-id').value = transaction.id;
+                document.getElementById('transaction-amount').value = transaction.amount;
+                document.getElementById('transaction-description').value = transaction.description;
+                document.getElementById('transaction-date').value = new Date(transaction.date).toISOString().split('T')[0];
 
-            this.setTransactionType(transaction.type);
+                this.setTransactionType(transaction.type);
 
-            // Set category after type is set
-            setTimeout(() => {
-                document.getElementById('transaction-category').value = transaction.category;
-            }, 0);
-        } else {
-            // Add mode
-            this.currentTransaction = null;
-            title.textContent = 'Add Transaction';
+                // Set category after type is set
+                setTimeout(() => {
+                    document.getElementById('transaction-category').value = transaction.category;
+                }, 0);
+            } else {
+                // Add mode
+                this.currentTransaction = null;
+                title.textContent = 'Add Transaction';
 
-            document.getElementById('transaction-form').reset();
-            document.getElementById('transaction-id').value = '';
+                document.getElementById('transaction-form').reset();
+                document.getElementById('transaction-id').value = '';
 
-            // Set default date to today
-            document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
+                // Set default date to today
+                document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
 
-            this.setTransactionType('income');
+                this.setTransactionType('income');
+            }
+
+            modal.classList.add('show');
+            console.log('Modal class added');
+        } catch (error) {
+            console.error('Error opening transaction modal:', error);
+            alert('Error opening modal: ' + error.message);
         }
-
-        modal.classList.add('show');
     },
 
     hideTransactionModal() {
@@ -163,14 +170,29 @@ const Transactions = {
     },
 
     updateCategoryOptions() {
-        const select = document.getElementById('transaction-category');
-        // Use Categories module which should also be updated to use local cache from Firebase
-        const categories = Categories.getCategoriesByType(this.currentTransactionType);
+        try {
+            const select = document.getElementById('transaction-category');
+            // Check if Categories is available
+            if (!window.Categories || !Categories.getCategoriesByType) {
+                console.error('Categories module not loaded or missing getCategoriesByType');
+                return;
+            }
 
-        select.innerHTML = '<option value="">Select category</option>' +
-            categories.map(cat => `
-                <option value="${cat.id}">${cat.icon} ${cat.name}</option>
-            `).join('');
+            const categories = Categories.getCategoriesByType(this.currentTransactionType);
+
+            if (!categories) {
+                console.warn('No categories found for type:', this.currentTransactionType);
+                select.innerHTML = '<option value="">Select category</option>';
+                return;
+            }
+
+            select.innerHTML = '<option value="">Select category</option>' +
+                categories.map(cat => `
+                    <option value="${cat.id}">${cat.icon} ${cat.name}</option>
+                `).join('');
+        } catch (error) {
+            console.error('Error updating category options:', error);
+        }
     },
 
     async handleSaveTransaction() {

@@ -14,6 +14,11 @@ const Transactions = {
         this.currentUser = user;
         this.attachEventListeners();
 
+        // Initial update attempt in case categories are already there
+        setTimeout(() => {
+            this.updateCategoryOptions();
+        }, 500);
+
         // Setup real-time listener
         if (this.unsubscribe) this.unsubscribe();
 
@@ -185,7 +190,14 @@ const Transactions = {
 
     updateCategoryOptions() {
         try {
+            console.log('updateCategoryOptions called. Type:', this.currentTransactionType);
             const select = document.getElementById('transaction-category');
+
+            if (!select) {
+                console.error('Transaction category select element not found');
+                return;
+            }
+
             // Check if Categories is available
             if (!window.Categories || !Categories.getCategoriesByType) {
                 console.error('Categories module not loaded or missing getCategoriesByType');
@@ -193,8 +205,9 @@ const Transactions = {
             }
 
             const categories = Categories.getCategoriesByType(this.currentTransactionType);
+            console.log('Categories retrieved:', categories);
 
-            if (!categories) {
+            if (!categories || categories.length === 0) {
                 console.warn('No categories found for type:', this.currentTransactionType);
                 select.innerHTML = '<option value="">Select category</option>';
                 return;
@@ -204,6 +217,8 @@ const Transactions = {
                 categories.map(cat => `
                     <option value="${cat.id}">${cat.icon} ${cat.name}</option>
                 `).join('');
+
+            console.log('Category options updated. Count:', categories.length);
         } catch (error) {
             console.error('Error updating category options:', error);
         }
@@ -483,3 +498,5 @@ const Transactions = {
         this.transactionToDelete = null;
     }
 };
+
+window.Transactions = Transactions;

@@ -100,20 +100,27 @@ const Settings = {
         try {
             if (window.UIEnhancements) UIEnhancements.showLoading('Updating profile...');
 
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                throw new Error('No authenticated user found');
+            }
+
             // Update Firebase Auth profile
-            await this.currentUser.updateProfile({
+            await user.updateProfile({
                 displayName: newName
             });
 
             // Update Firestore Profile
-            await FirebaseDB.saveUserProfile(this.currentUser.uid, {
+            await FirebaseDB.saveUserProfile(user.uid, {
                 name: newName,
-                email: this.currentUser.email
+                email: user.email
             });
 
             // Update local object
-            this.currentUser.name = newName;
-            this.currentUser.displayName = newName;
+            if (this.currentUser) {
+                this.currentUser.name = newName;
+                this.currentUser.displayName = newName;
+            }
 
             // Update UI
             const userName = document.getElementById('user-name');
@@ -167,12 +174,17 @@ const Settings = {
         try {
             if (window.UIEnhancements) UIEnhancements.showLoading('Updating password...');
 
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                throw new Error('No authenticated user found');
+            }
+
             // Re-authenticate user first (required for password changes)
-            const credential = firebase.auth.EmailAuthProvider.credential(this.currentUser.email, currentPassword);
-            await this.currentUser.reauthenticateWithCredential(credential);
+            const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+            await user.reauthenticateWithCredential(credential);
 
             // Update password
-            await this.currentUser.updatePassword(newPassword);
+            await user.updatePassword(newPassword);
 
             // Clear form
             document.getElementById('password-form').reset();
@@ -246,7 +258,13 @@ const Settings = {
             return;
         }
 
-        console.log('Deleting account for user:', this.currentUser.uid);
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            console.error('No authenticated user found for deletion');
+            return;
+        }
+
+        console.log('Deleting account for user:', user.uid);
 
         try {
             if (window.UIEnhancements) UIEnhancements.showLoading('Deleting account...');
@@ -258,7 +276,7 @@ const Settings = {
             // But we can try to delete what we can.
 
             // Re-authenticate might be needed if session is old, but let's try direct delete first.
-            await this.currentUser.delete();
+            await user.delete();
 
             // Clear session (Firebase SDK handles this, but good to ensure UI update)
             console.log('Cleared session');

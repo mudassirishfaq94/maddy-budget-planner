@@ -16,13 +16,22 @@ const Categories = {
         this.unsubscribes.forEach(unsub => unsub());
         this.unsubscribes = [];
 
+        // LOAD DEFAULTS IMMEDIATELY
+        if (window.FirebaseDB && FirebaseDB.DEFAULT_CATEGORIES) {
+            console.log('Loading defaults immediately');
+            this.incomeCategories = FirebaseDB.DEFAULT_CATEGORIES.filter(c => c.type === 'income');
+            this.expenseCategories = FirebaseDB.DEFAULT_CATEGORIES.filter(c => c.type === 'expense');
+            this.renderCategories();
+        }
+
         if (window.FirebaseDB) {
             // Listen to income categories
             const unsubIncome = FirebaseDB.listenToCategories(user.uid, 'income', (categories) => {
+                console.log('Income categories loaded:', categories);
                 this.incomeCategories = categories;
                 this.renderCategories();
                 // Update transaction modal if needed
-                if (Transactions && Transactions.updateCategoryOptions) {
+                if (window.Transactions && Transactions.updateCategoryOptions) {
                     Transactions.updateCategoryOptions();
                 }
             });
@@ -30,10 +39,11 @@ const Categories = {
 
             // Listen to expense categories
             const unsubExpense = FirebaseDB.listenToCategories(user.uid, 'expense', (categories) => {
+                console.log('Expense categories loaded:', categories);
                 this.expenseCategories = categories;
                 this.renderCategories();
                 // Update transaction modal if needed
-                if (Transactions && Transactions.updateCategoryOptions) {
+                if (window.Transactions && Transactions.updateCategoryOptions) {
                     Transactions.updateCategoryOptions();
                 }
             });
@@ -204,3 +214,5 @@ const Categories = {
         return type === 'income' ? this.incomeCategories : this.expenseCategories;
     }
 };
+
+window.Categories = Categories;

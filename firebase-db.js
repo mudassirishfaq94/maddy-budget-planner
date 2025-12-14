@@ -4,7 +4,7 @@ const FirebaseDB = {
     // User Profile Operations
     async saveUserProfile(userId, userData) {
         try {
-            await db.collection('users').doc(userId).set({
+            await window.db.collection('users').doc(userId).set({
                 name: userData.name,
                 email: userData.email,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -18,7 +18,7 @@ const FirebaseDB = {
 
     async getUserProfile(userId) {
         try {
-            const doc = await db.collection('users').doc(userId).get();
+            const doc = await window.db.collection('users').doc(userId).get();
             return doc.exists ? doc.data() : null;
         } catch (error) {
             console.error('Error getting user profile:', error);
@@ -52,7 +52,7 @@ const FirebaseDB = {
     // Transaction Operations
     async saveTransaction(transaction) {
         try {
-            const docRef = await db.collection('transactions').add({
+            const docRef = await window.db.collection('transactions').add({
                 ...transaction,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -65,7 +65,7 @@ const FirebaseDB = {
     },
 
     listenToTransactions(userId, callback) {
-        return db.collection('transactions')
+        return window.db.collection('transactions')
             .where('userId', '==', userId)
             .orderBy('date', 'desc')
             .onSnapshot((snapshot) => {
@@ -87,7 +87,7 @@ const FirebaseDB = {
 
     async updateTransaction(transactionId, updates) {
         try {
-            await db.collection('transactions').doc(transactionId).update({
+            await window.db.collection('transactions').doc(transactionId).update({
                 ...updates,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -100,7 +100,7 @@ const FirebaseDB = {
 
     async deleteTransaction(transactionId) {
         try {
-            await db.collection('transactions').doc(transactionId).delete();
+            await window.db.collection('transactions').doc(transactionId).delete();
             return true;
         } catch (error) {
             console.error('Error deleting transaction:', error);
@@ -111,7 +111,7 @@ const FirebaseDB = {
     // Category Operations
     async saveCategory(category) {
         try {
-            const docRef = await db.collection('categories').add(category);
+            const docRef = await window.db.collection('categories').add(category);
             return docRef.id;
         } catch (error) {
             console.error('Error saving category:', error);
@@ -124,7 +124,7 @@ const FirebaseDB = {
         const defaults = this.DEFAULT_CATEGORIES.filter(c => c.type === type);
 
         // Listen only for user's custom categories
-        return db.collection('categories')
+        return window.db.collection('categories')
             .where('userId', '==', userId)
             .where('type', '==', type)
             .onSnapshot((snapshot) => {
@@ -150,7 +150,7 @@ const FirebaseDB = {
             if (categoryId.startsWith('default_')) {
                 throw new Error('Cannot delete default category');
             }
-            await db.collection('categories').doc(categoryId).delete();
+            await window.db.collection('categories').doc(categoryId).delete();
             return true;
         } catch (error) {
             console.error('Error deleting category:', error);

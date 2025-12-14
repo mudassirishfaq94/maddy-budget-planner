@@ -2,6 +2,8 @@
 
 const App = {
     currentUser: null,
+    inactivityTimer: null,
+    INACTIVITY_LIMIT: 15 * 60 * 1000, // 15 minutes
 
     init() {
         this.checkAuth();
@@ -37,8 +39,10 @@ const App = {
                     console.error("Error fetching user profile", e);
                 }
                 this.showDashboard();
+                this.startInactivityTimer();
             } else {
                 this.currentUser = null;
+                this.stopInactivityTimer();
                 this.showAuth();
             }
         });
@@ -186,17 +190,47 @@ const App = {
     },
 
     async handleLogout() {
-        if (confirm('Are you sure you want to logout?')) {
-            try {
-                await firebase.auth().signOut();
-                if (window.UIEnhancements) {
-                    UIEnhancements.showToast('Logged Out', 'You have been logged out successfully', 'info');
-                }
-            } catch (error) {
-                console.error('Logout error:', error);
-                alert('Error logging out');
+        // Removed confirmation dialog
+        try {
+            await firebase.auth().signOut();
+            if (window.UIEnhancements) {
+                UIEnhancements.showToast('Logged Out', 'You have been logged out successfully', 'info');
             }
+        } catch (error) {
+            console.error('Logout error:', error);
+            alert('Error logging out');
         }
+    },
+
+    startInactivityTimer() {
+        if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+
+        // Reset timer on user interaction
+        ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(event => {
+            document.addEventListener(event, this.resetInactivityTimer.bind(this));
+        });
+
+        this.resetInactivityTimer();
+    },
+
+    stopInactivityTimer() {
+        if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+
+        // Remove listeners
+        ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(event => {
+            document.removeEventListener(event, this.resetInactivityTimer.bind(this));
+        });
+    },
+
+    resetInactivityTimer() {
+        if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+
+        if (!this.currentUser) return;
+
+        this.inactivityTimer = setTimeout(() => {
+            console.log('User inactive for too long. Logging out...');
+            this.handleLogout();
+        }, this.INACTIVITY_LIMIT);
     },
 
     showError(errorDiv, message) {

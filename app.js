@@ -39,10 +39,12 @@ const App = {
                     console.error("Error fetching user profile", e);
                 }
                 this.showDashboard();
-                this.startInactivityTimer();
+                // this.startInactivityTimer(); // Use UIEnhancements instead
+                if (window.UIEnhancements) UIEnhancements.startSessionTimeout();
             } else {
                 this.currentUser = null;
-                this.stopInactivityTimer();
+                // this.stopInactivityTimer(); // Use UIEnhancements instead
+                if (window.UIEnhancements) UIEnhancements.stopSessionTimeout();
                 this.showAuth();
             }
         });

@@ -7,7 +7,7 @@ const UIEnhancements = {
 
     init() {
         this.setupKeyboardShortcuts();
-        this.setupSessionTimeout();
+        // this.setupSessionTimeout(); // Removed auto-start
         this.showShortcutsHint();
         this.attachOnboardingListeners();
     },
@@ -171,14 +171,41 @@ const UIEnhancements = {
 
     // Session Timeout
     setupSessionTimeout() {
+        // Renamed to startSessionTimeout for clarity, keeping this for backward compatibility if needed
+        this.startSessionTimeout();
+    },
+
+    boundResetSessionTimeout: null,
+
+    startSessionTimeout() {
+        if (this.boundResetSessionTimeout) return; // Already running
+
+        console.log('Starting session timeout monitoring');
+        this.boundResetSessionTimeout = this.resetSessionTimeout.bind(this);
+
         this.resetSessionTimeout();
 
         // Reset timeout on user activity
         ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(event => {
-            document.addEventListener(event, () => {
-                this.resetSessionTimeout();
-            });
+            document.addEventListener(event, this.boundResetSessionTimeout);
         });
+    },
+
+    stopSessionTimeout() {
+        console.log('Stopping session timeout monitoring');
+        if (this.sessionTimeout) {
+            clearTimeout(this.sessionTimeout);
+            this.sessionTimeout = null;
+        }
+
+        this.dismissTimeoutWarning(); // Remove any active warning
+
+        if (this.boundResetSessionTimeout) {
+            ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(event => {
+                document.removeEventListener(event, this.boundResetSessionTimeout);
+            });
+            this.boundResetSessionTimeout = null;
+        }
     },
 
     resetSessionTimeout() {
